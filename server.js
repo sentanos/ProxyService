@@ -10,6 +10,7 @@ const { URL } = require('url');
 // Manual constants
 const ALLOWED_METHODS = http.METHODS;
 const ALLOWED_PROTOS = ['http', 'https'];
+const ALLOWED_GZIP_METHODS = ['transform', 'decode', 'append'];
 const DEFAULT_PROTO = 'https';
 const DEFAULT_USERAGENT = 'Mozilla';
 
@@ -41,8 +42,10 @@ const USE_OVERRIDE_STATUS = process.env.USE_OVERRIDE_STATUS === 'true';
 const REWRITE_ACCEPT_ENCODING = process.env.REWRITE_ACCEPT_ENCODING === 'true';
 const APPEND_HEAD = process.env.APPEND_HEAD === 'true';
 const ALLOWED_HOSTS = getHosts(process.env.ALLOWED_HOSTS);
+const GZIP_METHOD = process.env.GZIP_METHOD;
 
-assert.ok(ACCESS_KEY);
+assert.ok(ACCESS_KEY, 'Missing ACCESS_KEY');
+assert.ok(ALLOWED_GZIP_METHODS.includes(GZIP_METHOD), `GZIP_METHOD must be one of the following values: ${JSON.stringify(ALLOWED_GZIP_METHODS)}`);
 
 const server = http.createServer();
 
@@ -70,12 +73,110 @@ const onProxyError = (err, req, res) => {
   writeErr(res, 500, 'Proxying failed');
 };
 
+const appendHead = (proxyRes, res, append) => {
+  const encoding = proxyRes.headers['content-encoding'];
+  let handler;
+  let encoder;
+  let appendEncoded;
+  switch (encoding) {
+    case 'gzip':
+      handler = zlib.gzip;
+      break;
+    default:
+      appendEncoded = append;
+  }
+  if (handler) {
+    encoder = new Promise((resolve, reject) => {
+      handler(append, (e, buf) => {
+        if (e) {
+          reject(e);
+        }
+        appendEncoded = buf;
+        resolve();
+      });
+    });
+  }
+  if ('content-length' in proxyRes.headers) {
+    delete proxyRes.headers['content-length'];
+  }
+  const _end = res.end;
+  res.end = async () => {
+    if (!appendEncoded) {
+      try {
+        await encoder;
+      } catch (e) {
+        console.error(`Encoder error: ${e}`);
+        return;
+      }
+    }
+    res.write(appendEncoded);
+    _end.call(res);
+  };
+};
+
+const transformEncoded = (proxyRes, res, append) => {
+  const encoding = proxyRes.headers['content-encoding'];
+  let decodeHandler;
+  let encodeHandler;
+  let encoder;
+  let decoder;
+  switch (encoding) {
+    case 'gzip':
+      decodeHandler = zlib.createGunzip;
+      encodeHandler = zlib.createGzip;
+      break;
+  }
+  if (decodeHandler) {
+    decoder = decodeHandler();
+    encoder = encodeHandler();
+    const _write = res.write.bind(res);
+    const _end = res.end.bind(res);
+    res.write = (chunk) => {
+      decoder.write(chunk);
+    };
+    res.end = () => {
+      decoder.end();
+    };
+    if (GZIP_METHOD === 'transform') {
+      decoder.on('end', () => {
+        encoder.write(append);
+        encoder.end();
+      });
+      decoder.pipe(encoder, {end: false});
+      encoder.on('data', (chunk) => {
+        _write(chunk);
+      });
+      encoder.on('end', () => {
+        _end();
+      });
+    } else if (GZIP_METHOD === 'decode') {
+      decoder.on('data', (chunk) => {
+        _write(chunk);
+      });
+      decoder.on('end', () => {
+        _write(append);
+        _end();
+      });
+      if ('content-encoding' in proxyRes.headers) {
+        delete proxyRes.headers['content-encoding'];
+      }
+    }
+  }
+  if ('content-length' in proxyRes.headers) {
+    delete proxyRes.headers['content-length'];
+  }
+};
+
+const processResponse = (proxyRes, res, append) => {
+  if (['transform', 'decode'].includes(GZIP_METHOD) && proxyRes.headers['content-encoding']) {
+    transformEncoded(proxyRes, res, append);
+  } else {
+    appendHead(proxyRes, res, append);
+  }
+};
+
 const onProxyReq = (proxyReq, req, res, options) => {
   proxyReq.setHeader('User-Agent', proxyReq.getHeader('proxy-override-user-agent') || DEFAULT_USERAGENT);
-  const overrideCookie = proxyReq.getHeader('proxy-override-cookie');
-  if (overrideCookie) {
-    proxyReq.setHeader('Cookie', overrideCookie);
-  }
   if (REWRITE_ACCEPT_ENCODING) {
     proxyReq.setHeader('Accept-Encoding', 'gzip');
   }
@@ -97,44 +198,7 @@ const onProxyRes = (proxyRes, req, res) => {
   }
   if (APPEND_HEAD) {
     const append = `"""${JSON.stringify(head)}"""`;
-    const encoding = proxyRes.headers['content-encoding'];
-    let handler;
-    let encoder;
-    let appendEncoded;
-    switch (encoding) {
-      case 'gzip':
-        handler = zlib.gzip;
-        break;
-      default:
-        appendEncoded = append;
-    }
-    if (handler) {
-      encoder = new Promise((resolve, reject) => {
-        handler(append, (e, buf) => {
-          if (e) {
-            reject(e);
-          }
-          appendEncoded = buf;
-          resolve();
-        });
-      });
-    }
-    if ('content-length' in proxyRes.headers) {
-      delete proxyRes.headers['content-length'];
-    }
-    const _end = res.end;
-    res.end = async () => {
-      if (!appendEncoded) {
-        try {
-          await encoder;
-        } catch (e) {
-          console.error(`Encoder error: ${e}`);
-          return;
-        }
-      }
-      res.write(appendEncoded);
-      _end.call(res);
-    };
+    processResponse(proxyRes, res, append);
   }
 };
 
