@@ -36,7 +36,7 @@ const getHosts = (hosts) => {
 
 // Environment Constants
 const PORT = process.env.PORT || 80;
-const ACCESS_KEY = Buffer.from(process.env.ACCESS_KEY);
+const ACCESS_KEY = process.env.ACCESS_KEY && Buffer.from(process.env.ACCESS_KEY);
 const USE_WHITELIST = process.env.USE_WHITELIST === 'true';
 const USE_OVERRIDE_STATUS = process.env.USE_OVERRIDE_STATUS === 'true';
 const REWRITE_ACCEPT_ENCODING = process.env.REWRITE_ACCEPT_ENCODING === 'true';
@@ -244,7 +244,8 @@ server.on('request', (req, res) => {
     req.on('error', (err) => {
       console.error(`Request error: ${err}`);
     });
-    if (crypto.timingSafeEqual(Buffer.from(accessKey), ACCESS_KEY)) {
+    const accessKeyBuffer = Buffer.from(accessKey);
+    if (accessKeyBuffer.length === ACCESS_KEY.length && crypto.timingSafeEqual(accessKeyBuffer, ACCESS_KEY)) {
       let parsedTarget;
       try {
         parsedTarget = new URL(`https://${requestedTarget}`);
