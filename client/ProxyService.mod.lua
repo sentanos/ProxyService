@@ -9,7 +9,7 @@ local GET_METHODS = {'GET', 'DELETE'}
 local ProxyService = {}
 
 local processBody = function (body)
-  local pos, _, match = body.find('"""(.+)"""$')
+  local pos, _, match = body:find('"""(.+)"""$')
   local data = _decode(http, match)
   local res = {
     headers = data.headers,
