@@ -39,14 +39,16 @@ local getHeaders = function (this, method, target, headers, overrideProto)
   if method ~= 'GET' and method ~= 'POST' then
     sendHeaders['proxy-target-override-method'] = method
   end
-  for header, value in next, headers do
-    local headerLower = header:lower();
-    if headerLower == 'user-agent' then
-      sendHeaders['user-agent'] = nil
-      sendHeaders['proxy-override-user-agent'] = value
-    elseif headerLower == 'cookie' then
-      sendHeaders['cookie'] = nil
-      sendHeaders['proxy-override-cookie'] = value
+  if headers then
+    for header, value in next, headers do
+      local headerLower = header:lower();
+      if headerLower == 'user-agent' then
+        sendHeaders['user-agent'] = nil
+        sendHeaders['proxy-override-user-agent'] = value
+      elseif headerLower == 'cookie' then
+        sendHeaders['cookie'] = nil
+        sendHeaders['proxy-override-cookie'] = value
+      end
     end
   end
   return sendHeaders
