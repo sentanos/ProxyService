@@ -33,7 +33,7 @@ That's it.
 
 **Client Setup Tutorial**
 
-- Get the handler script from [here](/client/ProxyService.mod.lua) and put it in a module script in ServerScriptService.
+- Get the handler script from [here](https://github.com/sentanos/ProxyService/blob/master/client/ProxyService.mod.lua) and put it in a module script in ServerScriptService.
 - In the script you want to use this from, require the ModuleScript. If your module is named "ProxyService", for example, you would add `local ProxyService = require(game:GetService('ServerScriptService').ProxyService)` to the top of your script.
 - Add a line to create your proxy client, this will generally look like this: `local Proxy = ProxyService:New('PASTE_DOMAIN_HERE', 'PASTE_ACCESS_KEY_HERE')` (see below for a more complete example)
 - Use Proxy exactly as you would use [HttpService](http://wiki.roblox.com/index.php?title=API:Class/HttpService). The only difference is an extra `overrideProto` argument. You can pass in `http` if you are using an API that doesn't support https (the default protocol).
