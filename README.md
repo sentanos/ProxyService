@@ -1,10 +1,10 @@
 ## ProxyService
 
-This basically serves an Http client that opens the door to actually using REST APIs, reading response headers, reading status codes, accessing roblox.com from in-game, and more (including crazy stuff like logging into a Roblox account from a game server).
+Roblox's HttpService has always been severely lacking. This open-source project essentially aims to serve as a replacement, providing an Http client that opens the door to actually using REST APIs, reading response headers, reading status codes, accessing roblox.com from in-game, and more.
 
-Example uses are accessing Roblox, Discord, Trello, and Firebase APIs. You can use this for virtually any API.
+Example uses are accessing Roblox, Discord, Trello, and Firebase APIs, including crazy stuff like logging into a Roblox account from in Roblox. You can use this for virtually any API.
 
-The way it works is that you make a request to a proxy server instead of the server you are accessing, and the proxy server actually sends the request for you. It returns an HTTP 200 so Roblox does not error while appending response headers to the response. This is all done in the background with a free personal server you can setup very easily.
+The way it works is that the game makes a request to a proxy server instead of the server you want to access and the proxy server actually sends the request for you. It returns an HTTP 200 so Roblox does not error and then appends response headers/codes to the response. This is all done in the background with a free, open-source, personal server that you can setup very easily.
 
 **Features**
 
