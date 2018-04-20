@@ -2,7 +2,9 @@
 
 This basically serves an Http client that opens the door to actually using REST APIs, reading response headers, reading status codes, accessing roblox.com from in-game, and more (including crazy stuff like logging into a Roblox account from a game server).
 
-The way it works is that you make a request to a proxy server instead of the server you are accessing, and the proxy server actually sends the request for you. It returns an HTTP 200 so Roblox does not error while appending response headers to the response. This is all done in the background with a personal server you can setup for free and very easily.
+Example uses are accessing Roblox, Discord, Trello, and Firebase APIs. You can use this for virtually any API.
+
+The way it works is that you make a request to a proxy server instead of the server you are accessing, and the proxy server actually sends the request for you. It returns an HTTP 200 so Roblox does not error while appending response headers to the response. This is all done in the background with a free personal server you can setup very easily.
 
 **Features**
 
@@ -23,7 +25,7 @@ This makes Roblox Http requests more complete by adding support for the followin
 [![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/sentanos/ProxyService)
 
 - Type in whatever name you want.
-- Click "Deploy app".
+- Click "Deploy app". Don't touch any of the variables unless you know what you're doing.
 - Click view and copy the URL.
 - Click manage app and go to `Settings > Reveal Config Vars` and copy the ACCESS_KEY.
 
@@ -88,18 +90,16 @@ Advanced example script (login to a user and remove their primary group):
 _(Actually logging in to a Roblox account from in-game to use essential functions is not recommended)_
 ```lua
 local ProxyService = require(script.Parent.ProxyService)
-local Proxy = ProxyService:New('https://proxyservice.herokuapp.com', '6ddea1d2a6606f01538e8c92bbf8ba1e9c6aaa46e0a24cb0ce32ef0444130d07')
+local Proxy = ProxyService:New('http://localhost:8080', 'test')
 local username = 'Shedletsky'
 local password = 'hunter2'
 local tokenCache
+local getWithToken
 
-local createTokenHandler = function (handler)
-  return function (...)
-    return getWithToken(handler, false, ...);
-  end
-end
+local http = game:GetService('HttpService')
+local encode = http.JSONEncode
 
-local getWithToken = function (handler, retry, ...)
+getWithToken = function (handler, retry, ...)
   local res = handler(tokenCache, ...)
   if res.status.code == 403 and res.status.message == 'Token Validation Failed' then
     if retry then
@@ -108,27 +108,33 @@ local getWithToken = function (handler, retry, ...)
     end
     tokenCache = res.headers['x-csrf-token']
     return getWithToken(handler, true, ...)
-  else if res.status.code == 200 then
+  elseif res.status.code == 200 then
     return res
   else
     error('Login error: ' .. res.status.message)
   end
 end
 
+local createTokenHandler = function (handler)
+  return function (...)
+    return getWithToken(handler, false, ...);
+  end
+end
+
 local loginHandler = function (token)
-  return Proxy:Post('https://auth.roblox.com/v2/login', {
+  return Proxy:Post('https://auth.roblox.com/v2/login', encode(http, {
     ctype = 'Username',
     cvalue = username,
     password = password
-  }, Enum.HttpContentType.ApplicationJson, false, {
-    'X-CSRF-TOKEN' = token
+  }), Enum.HttpContentType.ApplicationJson, false, {
+    ['X-CSRF-TOKEN'] = token
   })
 end
 
 local deletePrimaryHandler = function (token, cookie)
   return Proxy:Delete('https://groups.roblox.com/v1/user/groups/primary', nil, {
-    'X-CSRF-TOKEN' = token,
-    'Cookie' = cookie
+    ['X-CSRF-TOKEN'] = token,
+    ['Cookie'] = cookie
   })
 end
 
@@ -136,9 +142,11 @@ local login = createTokenHandler(loginHandler)
 local deletePrimary = createTokenHandler(deletePrimaryHandler)
 
 local res = login()
-local cookie = res['set-cookie']
+local cookie = res.headers['set-cookie'][1]:match('.ROBLOSECURITY=.-;'):gsub('_|.-|_', '')
 
 deletePrimary(cookie)
+
+print('Done')
 ```
 
 Responses are different with ProxyService: instead of just the body, a table is returned with a dictionary of headers in the `headers` field, the body in the `body` field, and the status code and message in the `status` field.
@@ -163,4 +171,6 @@ Example response:
 
 - Requests use https by default, if the endpoint you are trying to access does not support https you must override the protocol (see API above).
 - Despite using https, server certificates aren't actually validated. If you want to do so you'll have to deal with installing client certificates.
+- Although the appending process seems simple at first (just write the extra data after the proxy response has been received), it becomes a lot more complicated when factoring in encodings. In order to add additional data the server has to first decode the response, append the data, and then re-encode the entire thing. Two alternative methods are available: one is to decode and not re-encode (sacrificing bandwidth for server performance), and the other is to append a separate gzip file to the request. The latter option seems to be the most ideal overall, but unfortunately it is not stable: that is, it is not supported by any spec, yet occasionally a client will support it because of the way they implement gzip. The Roblox client does not support this, unfortunately, but this proxy was created with non-Roblox clients in mind. To change the way the server handles encoded data you can change the `GZIP_METHOD` environment variable to any of these three values: `["transform", "decode", "append"]`.
 - Accept-Encoding is always overwritten to "gzip" because deflate is not supported. This is unlikely to affect anybody at all.
+- Heroku gives a generous number of free dyno hours, but note that without adding a credit card you are not able to run one dyno 24 hours nonstop. If you just add a credit card you'll get enough hours for the server to be constantly on for an entire month, every month, even if you don't actually spend any money.
