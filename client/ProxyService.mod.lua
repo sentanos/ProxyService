@@ -45,9 +45,6 @@ local getHeaders = function (this, method, target, headers, overrideProto)
       if headerLower == 'user-agent' then
         sendHeaders['user-agent'] = nil
         sendHeaders['proxy-override-user-agent'] = value
-      elseif headerLower == 'cookie' then
-        sendHeaders['cookie'] = nil
-        sendHeaders['proxy-override-cookie'] = value
       end
     end
   end
