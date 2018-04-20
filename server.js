@@ -180,7 +180,7 @@ server.on('request', (req, res) => {
     req.on('error', (err) => {
       console.error(`Request error: ${err}`);
     });
-    if (crypto.timingSafeEqual(Buffer.froum(accessKey), ACCESS_KEY)) {
+    if (crypto.timingSafeEqual(Buffer.from(accessKey), ACCESS_KEY)) {
       let parsedTarget;
       try {
         parsedTarget = new URL(`https://${requestedTarget}`);
