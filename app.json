@@ -32,6 +32,11 @@
       "description": "If true, the `Accept-Encoding` header will be set to `gzip` because deflate is not supported for APPEND_HEAD.",
       "required": true,
       "value": "true"
+    },
+    "GZIP_METHOD": {
+      "description": "Determines how the server appends the head to gzipped data, only applied when APPEND_HEAD is true. The three allowed values are [\"transform\", \"decode\", \"append\"]. Transform will decode the proxy response on the server, append the head, and then re-encode the entire thing. Decode will decode the proxy response on the server, append the head, but will not re-encode the data (and will remove the Content-Encoding header). Append will append another gzip archive to the request, however it is not supported by all clients (Roblox does not support append).",
+      "required": true,
+      "value": "transform"
     }
   }
 }
