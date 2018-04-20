@@ -2,6 +2,7 @@
 const proxy = require('http-proxy');
 const https = require('https');
 const http = require('http');
+const crypto = require('crypto');
 const assert = require('assert');
 const zlib = require('zlib');
 const { URL } = require('url');
@@ -19,23 +20,13 @@ const getHosts = (hosts) => {
   let parsed = [];
   hosts = hosts.split(',');
   for (let i = 0; i < hosts.length; i++) {
-    const iHost = hosts[i];
-    const split = iHost.split(':');
-    if (split.length !== 2) {
-      throw new Error(`Configuration error! Invalid protocol:host pair on item ${iHost}`);
-    }
-    const proto = split[0];
-    if (!ALLOWED_PROTOS.includes(proto)) {
-      throw new Error(`Configuration error! Invalid protocol ${proto}. Only these protocols are allowed: ${ALLOWED_PROTOS.join(', ')}`);
-    }
-    const host = split[1];
+    const host = hosts[i];
     try {
-      (() => new URL(`${proto}://${host}`))();
+      (() => new URL(`${DEFAULT_PROTO}://${host}`))();
     } catch (e) {
-      throw new Error(`Configuration error! Invalid host domain on item ${iHost}`);
+      throw new Error(`Configuration error! Invalid host domain on item ${host}`);
     }
     parsed.push({
-      proto: proto,
       host: host
     });
   }
@@ -49,7 +40,6 @@ const USE_WHITELIST = process.env.USE_WHITELIST === 'true';
 const USE_OVERRIDE_STATUS = process.env.USE_OVERRIDE_STATUS === 'true';
 const REWRITE_ACCEPT_ENCODING = process.env.REWRITE_ACCEPT_ENCODING === 'true';
 const APPEND_HEAD = process.env.APPEND_HEAD === 'true';
-const ALLOW_OVERRIDE_METHOD = process.env.ALLOW_OVERRIDE_METHOD === 'true';
 const ALLOWED_HOSTS = getHosts(process.env.ALLOWED_HOSTS);
 
 assert.ok(ACCESS_KEY);
@@ -172,15 +162,10 @@ const doProxy = (target, proto, req, res) => {
 server.on('request', (req, res) => {
   const method = req.headers['proxy-target-override-method'];
   if (method) {
-    if (ALLOW_OVERRIDE_METHOD) {
-      if (ALLOWED_METHODS.includes(method)) {
-        req.method = method;
-      } else {
-        writeErr(res, 400, 'Invalid target method');
-        return;
-      }
+    if (ALLOWED_METHODS.includes(method)) {
+      req.method = method;
     } else {
-      writeErr(res, 400, 'Method override is not permitted');
+      writeErr(res, 400, 'Invalid target method');
       return;
     }
   }
@@ -195,7 +180,7 @@ server.on('request', (req, res) => {
     req.on('error', (err) => {
       console.error(`Request error: ${err}`);
     });
-    if (accessKey === ACCESS_KEY) {
+    if (crypto.timingSafeEqual(accessKey, ACCESS_KEY)) {
       let parsedTarget;
       try {
         parsedTarget = new URL(`https://${requestedTarget}`);
@@ -210,7 +195,6 @@ server.on('request', (req, res) => {
         const iHost = ALLOWED_HOSTS[i];
         if (requestedHost === iHost.host) {
           hostAllowed = true;
-          hostProto = iHost.proto;
           break;
         }
       }

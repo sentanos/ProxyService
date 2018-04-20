@@ -16,7 +16,7 @@
     },
     "ALLOWED_HOSTS": {
       "description": "If USE_WHITELIST is true, allow only these hosts for proxy requests. Otherwise, these will be used to find the default protocol to use for the host. If it is not included in here, the protocol used will be https. The default hosts below are all Roblox hosts. This is a comma separated list of additional hosts (no spaces) with each entry in the format protocol:host.",
-      "value": "https:roblox.com,https:www.roblox.com,https:api.roblox.com,http:wiki.roblox.com,https:assetgame.roblox.com,https:avatar.roblox.com,https:groups.roblox.com,https:data.roblox.com,https:inventory.roblox.com,https:search.roblox.com,https:auth.roblox.com,https:avatar.roblox.com,https:billing.roblox.com,https:chat.roblox.com,https:develop.roblox.com,https:notifications.roblox.com,https:games.roblox.com"
+      "value": "roblox.com,www.roblox.com,api.roblox.com,wiki.roblox.com,assetgame.roblox.com,avatar.roblox.com,groups.roblox.com,data.roblox.com,inventory.roblox.com,search.roblox.com,auth.roblox.com,avatar.roblox.com,billing.roblox.com,chat.roblox.com,develop.roblox.com,notifications.roblox.com,games.roblox.com"
     },
     "USE_OVERRIDE_STATUS": {
       "description": "If true, requests are always returned with status code 200 but the data contains the true status code of the proxy response.",
@@ -25,11 +25,6 @@
     },
     "APPEND_HEAD": {
       "description": "If true, both the headers of the proxy response and the status code of the proxy response are returned in the response body.",
-      "required": true,
-      "value": true
-    },
-    "ALLOW_OVERRIDE_METHOD": {
-      "description": "Enable this to allow changing proxy methods to a method different than the original method. This allows for PUT, DELETE, PATCH, etc. requests with only GETs or POSTs. You will not need to modify this.",
       "required": true,
       "value": true
     },
