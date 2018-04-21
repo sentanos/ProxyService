@@ -67,11 +67,10 @@ end
 
 local urlProcessor = function (callback)
   return function (self, url, ...)
-    if url:sub(#url, #url) ~= '/' then
-      url = url .. '/'
-    end
-    local target = url:match('://(.-)/');
-    local path = url:match('://.-(/.*)');
+    local _, endpos = url:find('://')
+    local nextpos = url:find('/', endpos + 1) or #url + 1
+    local target = url:sub(endpos + 1, nextpos - 1)
+    local path = url:sub(nextpos)
     return callback(self, target, path, ...)
   end
 end
