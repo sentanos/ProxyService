@@ -42,6 +42,7 @@ That's it.
 **Video Tutorial**
 
 Here's a video of the above instructions (excluding heroku sign up):
+
 https://www.youtube.com/watch?v=Ull8w4J_WYQ
 
 **Client API**
